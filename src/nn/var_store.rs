@@ -114,6 +114,26 @@ impl VarStore {
             }
         }
     }
+
+    pub fn copy_to(&self, other: &mut VarStore) {
+        let self_vars = self.variables.lock().unwrap();
+        let mut other_vars = other.variables.lock().unwrap();
+
+        for (name, self_var) in self_vars.iter() {
+            other_vars.entry(name.to_string())
+                .and_modify(|other_var| {
+                    other_var.trainable = self_var.trainable;
+                    other_var.tensor.copy_(&self_var.tensor);
+
+                    let requires_grad = self_var.tensor.requires_grad();
+                    other_var.tensor = other_var.tensor.set_requires_grad(requires_grad);
+                })
+                .or_insert(Variable {
+                    tensor: self_var.tensor.copy().to_device(other.device),
+                    trainable: self_var.trainable,
+                });
+        }
+    }
 }
 
 impl<'a> Path<'a> {
