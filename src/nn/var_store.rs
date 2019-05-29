@@ -24,6 +24,7 @@ struct Variable {
 pub struct VarStore {
     variables: Mutex<HashMap<String, Variable>>,
     device: Device,
+    freezed: bool,
 }
 
 /// A variable store with an associated path for variables naming.
@@ -39,6 +40,7 @@ impl VarStore {
         VarStore {
             variables: Mutex::new(HashMap::new()),
             device,
+            freezed: false,
         }
     }
 
@@ -98,21 +100,27 @@ impl VarStore {
     }
 
     pub fn freeze(&mut self) {
+        if self.freezed { return }
+
         let variables = self.variables.lock().unwrap();
         for variable in variables.values() {
             if variable.trainable {
                 let _v = variable.tensor.set_requires_grad(false);
             }
         }
+        self.freezed = true;
     }
 
     pub fn unfreeze(&mut self) {
+        if !self.freezed { return }
+
         let variables = self.variables.lock().unwrap();
         for variable in variables.values() {
             if variable.trainable {
                 let _v = variable.tensor.set_requires_grad(true);
             }
         }
+        self.freezed = false;
     }
 
     pub fn copy(&self, device: Device) -> VarStore {
@@ -131,23 +139,33 @@ impl VarStore {
         VarStore {
             variables: Mutex::new(new_vars),
             device,
+            freezed: self.freezed,
         }
     }
 
-    pub fn copy_to(&self, other: &mut VarStore) {
-        let self_vars = self.variables.lock().unwrap();
-        let mut other_vars = other.variables.lock().unwrap();
+    pub fn copy_(&mut self, other: &VarStore) {
+        let orig_freezed = self.freezed;
+        self.freeze();
 
-        for (name, self_var) in self_vars.iter() {
-            other_vars.entry(name.to_string())
-                .and_modify(|other_var| {
-                    other_var.trainable = self_var.trainable;
-                    other_var.tensor.copy_(&self_var.tensor);
-                })
-                .or_insert(Variable {
-                    tensor: self_var.tensor.copy().to_device(other.device),
-                    trainable: self_var.trainable,
-                });
+        {
+            let mut self_vars = self.variables.lock().unwrap();
+            let other_vars = other.variables.lock().unwrap();
+
+            for (name, other_var) in other_vars.iter() {
+                self_vars.entry(name.to_string())
+                    .and_modify(|self_var| {
+                        self_var.trainable = other_var.trainable;
+                        self_var.tensor.copy_(&other_var.tensor);
+                    })
+                    .or_insert(Variable {
+                        tensor: other_var.tensor.copy().to_device(self.device),
+                        trainable: other_var.trainable,
+                    });
+            }
+        }
+
+        if !orig_freezed {
+            self.unfreeze();
         }
     }
 }
