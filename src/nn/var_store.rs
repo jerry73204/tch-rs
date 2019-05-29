@@ -115,6 +115,25 @@ impl VarStore {
         }
     }
 
+    pub fn copy(&self, device: Device) -> VarStore {
+        let mut new_vars = HashMap::<String, Variable>::new();
+        let self_vars = self.variables.lock().unwrap();
+
+        for (name, var) in self_vars.iter() {
+            let Variable { tensor, trainable } = var;
+            let new_var = Variable {
+                tensor: tensor.copy().to_device(device),
+                trainable: *trainable,
+            };
+            new_vars.insert(name.to_string(), new_var);
+        }
+
+        VarStore {
+            variables: Mutex::new(new_vars),
+            device,
+        }
+    }
+
     pub fn copy_to(&self, other: &mut VarStore) {
         let self_vars = self.variables.lock().unwrap();
         let mut other_vars = other.variables.lock().unwrap();
