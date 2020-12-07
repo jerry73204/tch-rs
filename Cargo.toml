@@ -14,7 +14,7 @@ readme = "README.md"
 [dependencies]
 lazy_static = "1.4.0"
 libc = "0.2.82"
-ndarray = "0.14.0"
+ndarray = { version = "0.14", optional = true }
 rand = "0.8.2"
 thiserror = "1.0.23"
 torch-sys = { version = "0.3.1", path = "torch-sys" }
@@ -30,6 +30,7 @@ anyhow = "1.0.38"
 members = ["torch-sys", "tch-bindgen"]
 
 [features]
+default = ["ndarray"]
 python = ["cpython"]
 doc-only = ["torch-sys/doc-only"]
 cuda-tests = []
