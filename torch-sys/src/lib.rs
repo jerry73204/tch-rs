@@ -1,3 +1,8 @@
+// We have OCaml and bindgen generated bindings together.
+// The OCaml bindings are kept for now until the transition to bindgen is complete.
+pub mod bindings;
+pub mod c_generated;
+
 use libc::{c_char, c_int, c_void, size_t};
 
 #[repr(C)]
@@ -109,8 +114,6 @@ extern "C" {
 
     pub fn at_manual_seed(seed: i64);
 }
-
-pub mod c_generated;
 
 extern "C" {
     pub fn atc_cuda_device_count() -> c_int;

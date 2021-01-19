@@ -1,6 +1,8 @@
 #ifndef __TORCH_API_H__
 #define __TORCH_API_H__
-#include<stdint.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 thread_local char *torch_last_err = nullptr;

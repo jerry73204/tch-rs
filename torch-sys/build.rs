@@ -6,7 +6,7 @@
 // On Linux, the TORCH_CUDA_VERSION environment variable can be used,
 // like 9.0, 90, or cu90 to specify the version of CUDA to use for libtorch.
 
-use anyhow::{bail, Result};
+use anyhow::{bail, format_err, Result};
 use cmake::Config;
 use curl::easy::Easy;
 use serde::{de::Error as _, Deserialize, Deserializer};
@@ -298,23 +298,39 @@ fn make(
     println!("cargo:rerun-if-changed=libtch/stb_image_write.h");
     println!("cargo:rerun-if-changed=libtch/stb_image_resize.h");
     println!("cargo:rerun-if-changed=libtch/stb_image.h");
+
     match &config.cargo_cfg_target_os {
         Os::Linux | Os::MacOs => {
-            cc::Build::new()
-                .cpp(true)
-                .pic(true)
-                .warnings(false)
-                .include(libtorch.join("include"))
-                .include(libtorch.join("include/torch/csrc/api/include"))
-                .flag(&format!("-Wl,-rpath={}", libtorch.join("lib").display()))
-                .flag("-std=c++14")
-                .flag(&format!(
-                    "-D_GLIBCXX_USE_CXX11_ABI={}",
-                    if config.libtorch_cxx11_abi { "1" } else { "0" }
-                ))
-                .file("libtch/torch_api.cpp")
-                .file(cuda_dependency)
-                .compile("tch");
+            // generate bindings
+            bindgen::Builder::default()
+                .header("libtch/torch_api.h")
+                // .parse_callbacks(Box::new(bindgen::CargoCallbacks))
+                .generate()
+                .map_err(|_| format_err!("failed to generate bindings"))?
+                .write_to_file(config.out_dir.join("bindings.rs"))?;
+
+            // build binary
+            {
+                let mut build = cc::Build::new();
+                build
+                    .cpp(true)
+                    .pic(true)
+                    .warnings(false)
+                    .flag(&format!("-Wl,-rpath={}", libtorch.join("lib").display()))
+                    .flag("-std=c++14")
+                    .flag(&format!(
+                        "-D_GLIBCXX_USE_CXX11_ABI={}",
+                        if config.libtorch_cxx11_abi { "1" } else { "0" }
+                    ));
+
+                build
+                    .include(libtorch.join("include"))
+                    .include(libtorch.join("include/torch/csrc/api/include"))
+                    .file("libtch/torch_api.cpp")
+                    .file(cuda_dependency);
+
+                build.compile("tch");
+            }
         }
         Os::Windows => {
             // TODO: Pass "/link" "LIBPATH:{}" to cl.exe in order to emulate rpath.
