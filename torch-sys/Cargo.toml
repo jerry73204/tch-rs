@@ -26,7 +26,9 @@ serde = { version = "1.0.120", features = ["derive"] }
 zip = "0.5"
 
 [features]
+# default = ["torchvision"]
 doc-only = []
+torchvision = []
 
 [package.metadata.docs.rs]
 features = [ "doc-only" ]

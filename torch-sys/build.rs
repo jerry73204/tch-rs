@@ -19,9 +19,11 @@ use std::{
 use env_config::*;
 
 const TORCH_VERSION: &str = "1.7.0";
-const RETURN_ENV_VARS: [&str; 4] = [
+const TORCHVISION_VERSION: &str = "0.8.1";
+const RETURN_ENV_VARS: [&str; 5] = [
     "TORCH_CUDA_VERSION",
     "LIBTORCH",
+    "LIBTORCHVISION",
     "LIBTORCH_CXX11_ABI",
     "LIBTORCH_USE_CMAKE",
 ];
@@ -34,6 +36,7 @@ mod env_config {
         #[serde(default = "default_torch_cuda_version")]
         pub torch_cuda_version: CudaVersion,
         pub libtorch: Option<PathBuf>,
+        pub libtorchvision: Option<PathBuf>,
         #[serde(
             deserialize_with = "deserialize_bool",
             default = "default_libtorch_cxx11_abi"
@@ -328,6 +331,15 @@ fn make(
                     .include(libtorch.join("include/torch/csrc/api/include"))
                     .file("libtch/torch_api.cpp")
                     .file(cuda_dependency);
+
+                #[cfg(feature = "torchvision")]
+                {
+                    let libtorchvision = config
+                        .libtorchvision
+                        .as_ref()
+                        .ok_or_else(|| format_err!("LIBTORCHVISION is not set"))?;
+                    build.include(libtorchvision.join("include").join("torchvision"));
+                }
 
                 build.compile("tch");
             }
