@@ -27,7 +27,7 @@ cpython = { version = "0.5.2", optional = true }
 anyhow = "1.0.38"
 
 [workspace]
-members = ["torch-sys"]
+members = ["torch-sys", "tch-bindgen"]
 
 [features]
 python = ["cpython"]
