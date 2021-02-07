@@ -1,13 +1,13 @@
-test: .FORCE
+.PHONY: test clean gen
+
+test:
 	cargo test
 
-clean: .FORCE
+clean:
 	cargo clean
 
-gen: .FORCE
+gen:
 	cargo run --bin tch-bindgen --manifest-path tch-bindgen/Cargo.toml --release
 	rustfmt src/wrappers/tensor_fallible_generated.rs
 	rustfmt src/wrappers/tensor_generated.rs
 	rustfmt torch-sys/src/c_generated.rs
-
-.FORCE:
